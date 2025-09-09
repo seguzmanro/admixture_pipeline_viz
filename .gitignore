@@ -1,0 +1,149 @@
+# R specific files
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+*.rds
+*.RDS
+*.rda
+*.RDA
+.Rapp.history
+.DS_Store
+.Rproj.user
+
+# R session Data
+.RData
+.RDataTmp
+
+# R temporary files
+*~
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Log files
+*.log
+*.out
+*.err
+
+# Environment files
+.paxil_env
+.env
+*.env
+.Renviron
+
+# System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Genomic data files (commonly large and not suitable for git)
+*.vcf
+*.vcf.gz
+*.bed
+*.bim
+*.fam
+*.ped
+*.map
+*.traw
+*.raw
+*.gen
+*.haps
+*.legend
+*.sample
+
+# ADMIXTURE output files
+*.P
+*.Q
+*.Q_bias
+*.Q_se
+*.nosex
+
+# Compressed files (often temporary or large datasets)
+*.zip
+*.tar.gz
+*.rar
+*.7z
+*.bz2
+*.xz
+
+# Python files (if any)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Generated plots and results (comment out if you want to track these)
+plot_results/
+plots/
+figures/
+results/
+output/
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+*.eps
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Mac specific
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows specific
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux specific
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Large data directories (uncomment if needed)
+# data/
+# raw_data/
+# input/
