@@ -247,7 +247,7 @@ create_base_map <- function(spatial_data, bbox) {
   tm_scale_bar(position = c("left", "bottom"))
 }
 
-generate_spatial_map <- function(admix_df, popmap, popcoords, spatial_data, k_value, bbox) {
+generate_spatial_map <- function(admix_df, popmap, popcoords, k_value) {
   #' Generate spatial admixture-type visualization components for mapping. Specifically, creates the pie-chart grobs representing population admixture-type proportions for each population and for a determined k_value.
   #' 
   #' @return List with population SF object and pie chart grobs

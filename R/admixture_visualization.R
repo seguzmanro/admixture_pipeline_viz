@@ -202,9 +202,7 @@ execute_pipeline <- function(args) {
       admix_results$Q_matrices[[k_name]],
       data$popmap,
       data$popcoords,
-      spatial_data,
-      k_value = k_val,
-      study_bbox
+      k_value = k_val
     )
     
     # Create the full map
