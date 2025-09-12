@@ -4,6 +4,7 @@
 # Description: Integrates ADMIXTURE results with spatial data using modular helpers
 
 # Load Core Packages ----------------------------------------------------------
+.libPaths('~/R/tmap_v4_lib/')
 suppressPackageStartupMessages({
   library(argparse)
   library(dotenv)
@@ -27,11 +28,9 @@ initialize_environment <- function() {
   #' 
   #' @return NULL
   
-  project_home <- Sys.getenv("PAXIL_HOME", unset = "~/")
+  project_home <- '~/Documents/Sebastian/UFRGS/Doctorado_2023/Pipelines/admixture_pipeline'
   dotenv::load_dot_env(file.path(project_home, ".paxil_env"))
   
-  # Validate spatial environment configuration
-  validate_spatial_env()
 }
 
 # Data Processing Functions ---------------------------------------------------
@@ -179,12 +178,8 @@ execute_pipeline <- function(args) {
     }
   }
   # Load spatial data using spatial helpers
-  spatial_data <- list(
-    countries = load_country_data(),
-    water = load_water_data(),
-    altitude = load_elevation_data()
-  )
-  
+  spatial_data <- load_basemap_data(data$popcoords, lon_col = 'lon', lat_col = 'lat', elev_zoom = 5)
+
   # Create adaptive bounding box
   pop_sf <- create_population_sf(data$popcoords)
   adapt_bbox <- adaptive_bbox(pop_sf, padding=0.15)
@@ -212,11 +207,11 @@ execute_pipeline <- function(args) {
         shapes = spatial_components$pie_grobs,
         size = 0.7,
         border.lwd = 0.1,
-        border.alpha = 0.5
+        col_alpha = 0.5
       ) +
-      tm_layout(
-        title = paste("Genetic Structure - K =", k_val),
-        title.position = c("center", "top")
+      tm_title(
+        paste("Genetic Structure - K =", k_val),
+        position = c("center", "top")
       )
     
     # Save high-resolution output

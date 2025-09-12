@@ -1,5 +1,5 @@
 # spatial_helpers.R
-.libPaths('~/R/tmap_v4_lib/')
+
 library(sf)
 library(dplyr)
 library(rnaturalearth)
@@ -31,7 +31,7 @@ load_basemap_data <- function(pop_coords,
     }
     pop_coords <- st_as_sf(pop_coords, coords = c(lon_col, lat_col), crs = 4326)
   }
-  sf_use_s2(FALSE)
+  
   # Compute bbox + padding
   bbox <- st_bbox(pop_coords)
   bbox_poly <- bbox + c(-padding,-padding,padding,padding)
