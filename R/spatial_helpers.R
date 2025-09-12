@@ -23,7 +23,8 @@ load_basemap_data <- function(pop_coords,
                               lat_col = "lat",
                               padding = 2,
                               simplify_tolerance = 0.01,
-                              elev_zoom = 5) {
+                              elev_zoom = 5,
+                              cache_dir = "cache_maps") {
   # Ensure sf object
   if (!inherits(pop_coords, "sf")) {
     if (!all(c(lon_col, lat_col) %in% names(pop_coords))) {
@@ -35,6 +36,11 @@ load_basemap_data <- function(pop_coords,
   # Compute bbox + padding
   bbox <- st_bbox(pop_coords)
   bbox_poly <- bbox + c(-padding,-padding,padding,padding)
+  
+  # Make sure cache dir exists
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir, recursive = TRUE)
+  }
   
   # Countries
   countries <- ne_countries(scale = 10, returnclass = "sf") %>%
@@ -54,16 +60,25 @@ load_basemap_data <- function(pop_coords,
     st_crop(bbox_poly) %>%
     st_make_valid()
   
-  # Elevation (SpatRaster)
-  elev_raster <- elevatr::get_elev_raster(
-    locations = pop_coords,
-    z = elev_zoom,
-    expand = 5,
-    clip = "bbox"
-  ) %>% crop(bbox_poly)
-  elev_raster[elev_raster[] < 0 ] = NA
-  elev <- terra::rast(elev_raster)  # convert to terra
-  names(elev) <- "elevation"
+  # Elevation (SpatRaster; cache by bbox_poly and zoom level)
+  cached_elev <- file.path(cache_dir, paste0(
+    "elev", paste0(round(bbox_poly, 4), collapse = ""), '_', elev_zoom, ".tif"
+  ))
+  if (file.exists(cached_elev)) {
+    elev <- terra::rast(cached_elev)
+  } else {
+    elev <- elevatr::get_elev_raster(
+      locations = pop_coords,
+      z = elev_zoom,
+      expand = 5,
+      clip = "bbox"
+    ) %>% crop(bbox_poly) %>% terra::rast()
+    
+    elev[elev[] < 0] <- NA
+    names(elev) <- "elevation"
+    
+    terra::writeRaster(elev, cached_elev, overwrite = TRUE)
+  }
   
   return(list(
     countries = countries,
