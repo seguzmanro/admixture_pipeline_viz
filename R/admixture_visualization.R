@@ -4,7 +4,7 @@
 # Description: Integrates ADMIXTURE results with spatial data using modular helpers
 
 # Load Core Packages ----------------------------------------------------------
-#.libPaths('~/R/tmap_v4_lib/')
+
 suppressPackageStartupMessages({
   library(argparse)
   library(dotenv)
@@ -28,8 +28,8 @@ initialize_environment <- function() {
   #' 
   #' @return NULL
   
-  project_home <- '~/Documents/Sebastian/UFRGS/Doctorado_2023/Pipelines/admixture_pipeline'
-  dotenv::load_dot_env(file.path(project_home, ".paxil_env"))
+  project_home <- '../'
+  dotenv::load_dot_env(file.path(project_home, ".env"))
   
 }
 

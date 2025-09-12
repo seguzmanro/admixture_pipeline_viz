@@ -1,5 +1,5 @@
 # spatial_helpers.R
-#.libPaths('~/R/tmap_v4_lib/')
+
 library(sf)
 library(dplyr)
 library(rnaturalearth)
@@ -32,7 +32,7 @@ load_basemap_data <- function(pop_coords,
     }
     pop_coords <- st_as_sf(pop_coords, coords = c(lon_col, lat_col), crs = 4326)
   }
-  sf_use_s2(FALSE)
+  
   # Compute bbox + padding
   bbox <- st_bbox(pop_coords)
   bbox_poly <- bbox + c(-padding,-padding,padding,padding)
@@ -44,21 +44,24 @@ load_basemap_data <- function(pop_coords,
   
   # Countries
   countries <- ne_countries(scale = 10, returnclass = "sf") %>%
-    st_crop(bbox_poly) %>%
     st_make_valid() %>%
+    st_crop(bbox_poly) %>%
     st_simplify(dTolerance = simplify_tolerance, preserveTopology = TRUE)
   
+  #sf_use_s2(FALSE)
   # Lakes
   lakes <- ne_download(scale = 10, type = "lakes", category = "physical",
                        returnclass = "sf") %>%
-    st_crop(bbox_poly) %>%
-    st_make_valid()
+    st_make_valid() %>%
+    st_crop(bbox_poly)
+    #st_make_valid()
   
   # Rivers
   rivers <- ne_download(scale = 10, type = "rivers_lake_centerlines", category = "physical",
                         returnclass = "sf") %>%
-    st_crop(bbox_poly) %>%
-    st_make_valid()
+    st_make_valid() %>%
+    st_crop(bbox_poly)
+    #st_make_valid()
   
   # Elevation (SpatRaster; cache by bbox_poly and zoom level)
   cached_elev <- file.path(cache_dir, paste0(
@@ -162,6 +165,8 @@ generate_spatial_map <- function(admix_df, popmap, popcoords, k_value) {
     summarise(across(starts_with("Cluster"), mean)) %>%
     left_join(popcoords, by = "pop")
   
+  pop_admix <- as.data.frame(pop_admix)
+
   # Check for missing coordinates
   missing_coords <- pop_admix$pop[is.na(pop_admix$lon) | is.na(pop_admix$lat)]
   if (length(missing_coords) > 0) {

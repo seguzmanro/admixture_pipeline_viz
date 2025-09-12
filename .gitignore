@@ -58,13 +58,6 @@ Thumbs.db
 *.legend
 *.sample
 
-# ADMIXTURE output files
-*.P
-*.Q
-*.Q_bias
-*.Q_se
-*.nosex
-
 # Compressed files (often temporary or large datasets)
 *.zip
 *.tar.gz
@@ -99,18 +92,7 @@ MANIFEST
 # Jupyter Notebook
 .ipynb_checkpoints
 
-# Generated plots and results (comment out if you want to track these)
-plot_results/
-plots/
-figures/
-results/
-output/
-*.png
-*.jpg
-*.jpeg
-*.pdf
-*.svg
-*.eps
+# Cached raster maps
 cache_maps/
 
 # Backup files
