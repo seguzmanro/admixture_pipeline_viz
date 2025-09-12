@@ -111,6 +111,7 @@ output/
 *.pdf
 *.svg
 *.eps
+cache_maps/
 
 # Backup files
 *.bak
