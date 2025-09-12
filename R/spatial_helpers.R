@@ -1,5 +1,5 @@
 # spatial_helpers.R
-.libPaths('~/R/tmap_v4_lib/')
+#.libPaths('~/R/tmap_v4_lib/')
 library(sf)
 library(dplyr)
 library(rnaturalearth)

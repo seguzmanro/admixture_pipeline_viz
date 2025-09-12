@@ -1,10 +1,10 @@
 #!/usr/bin/env Rscript
-# Petunia Admixture Spatial Visualization Pipeline (Refactored)
+# Admixture Spatial Visualization Pipeline (Refactored)
 # Author: [Sebastian Guzman]
 # Description: Integrates ADMIXTURE results with spatial data using modular helpers
 
 # Load Core Packages ----------------------------------------------------------
-.libPaths('~/R/tmap_v4_lib/')
+#.libPaths('~/R/tmap_v4_lib/')
 suppressPackageStartupMessages({
   library(argparse)
   library(dotenv)
@@ -146,19 +146,38 @@ execute_pipeline <- function(args) {
     data$fam
   )
   
-  # Generate CV plot using plot_formats
-  cv_plot <- format_cv_plot(admix_results$CV_errors)
-  save_genomics_plot(
-    cv_plot, 
-    file.path(args$output_dir, "cv_error_plot.pdf"),
-    width = 8, height = 6
-  )
+  # Determine which K values to process based on the --k_value argument
+  k_names_to_process <- names(admix_results$Q_matrices)
   
+  if (!is.null(args$k_value)) {
+    message("User specified K = ", args$k_value, ". Filtering results.")
+    
+    # Find the name in the list corresponding to the specified K
+    # This pattern looks for ".K$" at the end of the string to be precise
+    target_k_name <- grep(paste0("\\.", args$k_value, "$"), k_names_to_process, value = TRUE)
+    
+    if (length(target_k_name) == 0) {
+      stop("Specified K value (", args$k_value, ") not found in the input directory.")
+    }
+    
+    # Overwrite the list of K's to process with only the target one
+    k_names_to_process <- target_k_name
+  }
+
+  if (is.null(args$k_value)) {
+    # Generate CV plot using plot_formats
+    cv_plot <- format_cv_plot(admix_results$CV_errors)
+    save_genomics_plot(
+      cv_plot, 
+      file.path(args$output_dir, "cv_error_plot.pdf"),
+      width = 8, height = 6
+    )
+  }
   # Generate admixture barplots (compoplots) for each K
-  for (k_name in names(admix_results$Q_matrices)) {
+  for (k_name in k_names_to_process) {
     k_value <- as.integer(sub(".*\\.(\\d+)", "\\1", k_name))
     
-    if (k_value > 1) {  # Skip K=1
+    if (k_value > 1) { # Skip K=1
       # Create the barplot
       bar_plot <- format_admixture_barplot(
         admix_results$Q_matrices[[k_name]],
@@ -189,7 +208,7 @@ execute_pipeline <- function(args) {
   base_map <- create_base_map(spatial_data, study_bbox)
 
   # Process each K value sequentially instead of in parallel
-  for (k_name in names(admix_results$Q_matrices)) {
+  for (k_name in k_names_to_process) {
     k_val <- as.integer(sub(".*\\.(\\d+)", "\\1", k_name))
   
     # Generate spatial components
@@ -242,6 +261,8 @@ main <- function() {
   # Add arguments for input files and directories
   parser$add_argument("--input_dir", default = Sys.getenv("EXAMPLE_ADMIX_DIR"), 
                       help = "ADMIXTURE output directory")
+  parser$add_argument("--k_value", type = "integer", default = NULL,
+                      help = "Optional: Process only this K value (default: all K)")
   parser$add_argument("--fam", default = Sys.getenv("EXAMPLE_FAM"), 
                       help = "PLINK .fam file")
   parser$add_argument("--popmap", default = Sys.getenv("EXAMPLE_POPMAP"), 
