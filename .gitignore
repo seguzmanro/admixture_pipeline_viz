@@ -15,6 +15,7 @@
 # R session Data
 .RData
 .RDataTmp
+R/Rplots.pdf
 
 # R temporary files
 *~
