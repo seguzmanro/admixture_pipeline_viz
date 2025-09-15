@@ -4,8 +4,58 @@ library(sf)
 library(dplyr)
 library(rnaturalearth)
 library(rnaturalearthdata)
+library(osmdata)
 library(elevatr)
 library(terra)
+library(digest)
+
+cache_dir <- "cache_maps/osm_water"
+if (!dir.exists(cache_dir)) {
+  dir.create(cache_dir, recursive = TRUE)
+}
+
+get_osm_water_data <- function(bbox_poly) {
+  #' Get OSM water data with caching
+  #' 
+  #' @param bbox_poly The bounding box polygon
+  #' @return List containing rivers, lakes_poly, and lakes_multi
+  
+  # Create a unique key for this bounding box
+  bbox_key <- digest::digest(bbox_poly)
+  cache_file <- file.path(cache_dir, paste0(bbox_key, ".rds"))
+  
+  # Check if cached data exists
+  if (file.exists(cache_file)) {
+    message("Loading OSM water data from cache")
+    return(readRDS(cache_file))
+  }
+  
+  message("Downloading OSM water data (this may take a moment)")
+  
+  # Query for RIVERS
+  rivers_query <- opq(bbox = bbox_poly) |> 
+    add_osm_feature(key = 'water', value = 'river') |>
+    osmdata_sf()
+  
+  # Query for LAKES
+  lakes_query <- opq(bbox = bbox_poly) |> 
+    add_osm_feature(key = 'natural', value = 'water') |>
+    add_osm_feature(key = 'water', value = 'lake') |>
+    osmdata_sf()
+  
+  # Extract the features
+  water_data <- list(
+    rivers = rivers_query$osm_lines,
+    lakes_poly = lakes_query$osm_polygons,
+    lakes_multi = lakes_query$osm_multipolygons
+  )
+  
+  # Save to cache
+  saveRDS(water_data, cache_file)
+  message("OSM water data saved to cache")
+  
+  return(water_data)
+}
 
 #' Load basemap data (boundaries, lakes, rivers, elevation) around given points
 #'
@@ -48,21 +98,50 @@ load_basemap_data <- function(pop_coords,
     st_crop(bbox_poly) %>%
     st_simplify(dTolerance = simplify_tolerance, preserveTopology = TRUE)
   
-  #sf_use_s2(FALSE)
-  # Lakes
-  lakes <- ne_download(scale = 10, type = "lakes", category = "physical",
+  # Natural Earth Lakes
+  ne_lakes <- ne_download(scale = 10, type = "lakes", category = "physical",
                        returnclass = "sf") %>%
     st_make_valid() %>%
     st_crop(bbox_poly)
-    #st_make_valid()
   
-  # Rivers
-  rivers <- ne_download(scale = 10, type = "rivers_lake_centerlines", category = "physical",
+  # Natural Earth Rivers
+  ne_rivers <- ne_download(scale = 10, type = "rivers_lake_centerlines", category = "physical",
                         returnclass = "sf") %>%
     st_make_valid() %>%
     st_crop(bbox_poly)
-    #st_make_valid()
-  
+
+  # OSM water data
+  osm_water_data <- get_osm_water_data(bbox_poly)
+
+  # OSM Rivers (typically represented as lines)
+  osm_rivers_lines <- osm_water_data$rivers %>% 
+    select(geometry) %>%  
+    st_as_sf() %>%
+    st_make_valid()
+
+  # OSM Lakes (typically represented as polygons)
+  osm_lakes_polygons <- osm_water_data$lakes_poly %>% 
+    select(geometry) %>%  
+    st_as_sf() %>%
+    st_make_valid()
+  if (!is.null(osm_lakes_polygons)) {
+    osm_lakes_polygons$area <- st_area(osm_lakes_polygons)
+    osm_large_lakes <- osm_lakes_polygons %>% filter(area > units::set_units(1, km^2))
+  }
+
+  # Also check for multipolygons which might contain additional water features
+  osm_lakes_multipolygons <- osm_water_data$lakes_multi %>% 
+    select(geometry) %>%  
+    st_as_sf() %>%
+    st_make_valid()
+
+  water_features <- list(
+    osm_rivers = osm_rivers_lines,
+    osm_lakes_poly = osm_large_lakes,
+    osm_lakes_multi = osm_lakes_multipolygons
+  )
+
+    
   # Elevation (SpatRaster; cache by bbox_poly and zoom level)
   cached_elev <- file.path(cache_dir, paste0(
     "elev", paste0(round(bbox_poly, 4), collapse = ""), '_', elev_zoom, ".tif"
@@ -85,8 +164,9 @@ load_basemap_data <- function(pop_coords,
   
   return(list(
     countries = countries,
-    lakes = lakes,
-    rivers = rivers,
+    lakes = ne_lakes,
+    rivers = ne_rivers,
+    osm_water = water_features,
     altitude = elev,
     bbox = bbox_poly
   ))
@@ -131,19 +211,39 @@ create_base_map <- function(spatial_data, bbox) {
   #' 
   #' @return tmap object
   
-  tm_shape(spatial_data$altitude, bbox = bbox, raster.downsample = FALSE) + 
-    tm_raster(col='elevation', col.scale = tm_scale_continuous(values='brewer.greys', value.na='lightblue'), col_alpha = 0.9, col.legend=tm_legend(show=FALSE)) +
-  tm_shape(spatial_data$countries) + 
-    tm_borders(lwd = 1.2) +
-  tm_shape(spatial_data$lakes) + 
-    tm_polygons(col="darkblue", fill = "lightblue", fill_alpha = 0.9) +
-  tm_shape(spatial_data$rivers) + 
-    tm_lines(col="darkblue", lwd=1.2) +
-  tm_layout(
-    legend.show = FALSE
-  ) +
-  tm_compass(position = c("right", "top")) +
-  tm_scalebar(position = c("left", "bottom"))
+  tm <- tm_shape(spatial_data$altitude, bbox = bbox, raster.downsample = FALSE) + 
+      tm_raster(col='elevation', col.scale = tm_scale_continuous(values='brewer.greys', value.na='lightblue'), col_alpha = 0.9, col.legend=tm_legend(show=FALSE)) +
+    tm_shape(spatial_data$countries) + 
+      tm_borders(lwd = 1.2)
+  
+  if (!is.null(spatial_data$osm_water$osm_rivers)) {
+    print(!is.null(spatial_data$osm_water$osm_rivers))
+    tm <- tm + tm_shape(spatial_data$osm_water$osm_rivers) + 
+      tm_lines(col = "darkblue", lwd = 1.2, col_alpha = 0.7)
+  }
+  
+
+  if (!is.null(spatial_data$osm_water$osm_lakes_poly)) {
+    tm <- tm + tm_shape(spatial_data$osm_water$osm_lakes_poly) + 
+      tm_polygons(col = "darkblue", fill = "lightblue", lwd = 1.2, fill_alpha = 0.7)
+  }
+
+  if (!is.null(spatial_data$osm_water$osm_lakes_multi)) {
+    tm <- tm + tm_shape(spatial_data$osm_water$osm_lakes_multi) + 
+      tm_polygons(col = "darkblue", fill = "lightblue", lwd = 1.2, fill_alpha = 0.7)
+  }
+
+  tm <- tm + tm_shape(spatial_data$rivers) + 
+      tm_lines(col="darkblue", lwd=1.2) +
+    tm_shape(spatial_data$lakes) + 
+      tm_polygons(col="darkblue", fill = "lightblue", fill_alpha = 0.9) +
+    tm_layout(
+      legend.show = FALSE
+    ) +
+    tm_compass(position = c("right", "top")) +
+    tm_scalebar(position = c("left", "bottom"))
+  
+  return(tm)
 }
 
 generate_spatial_map <- function(admix_df, popmap, popcoords, k_value) {
