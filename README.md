@@ -57,7 +57,7 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 - Clone the repository:
   ```bash
   git clone https://github.com/seguzmanro/admixture_pipeline_viz.git
-  cd petunia-admixture
+  cd admixture_pipeline
   ```
 - Install required R packages:  
   ```bash
