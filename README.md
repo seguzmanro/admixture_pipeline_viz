@@ -1,27 +1,44 @@
-# Petunia Admixture Spatial Visualization Pipeline
+# Admixture Spatial Visualization Pipeline
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![R Version](https://img.shields.io/badge/R-%3E%3D%204.0.0-blue)](https://www.r-project.org/)
 
 ## Overview
 
-This pipeline processes ADMIXTURE results and creates spatial visualizations of population structure in *Petunia* species from Brazilian and Uruguayan pampas. It integrates genetic admixture proportions with geographic data to produce:
+This pipeline processes ADMIXTURE results and creates spatial visualizations of population structure for **any species and geographic region**. It integrates genetic admixture proportions with geographic data to produce:
 
 - Cross-validation error plots for K selection
 - Individual ancestry bar plots
 - Population-level admixture maps overlaid on topography
 - Geographic distribution of genetic clusters
 
-![Example Output](examples/Pdepint/plot_results/admixture_map_K3.png)
-*Spatial visualization of genetic structure (K=3) in Petunia  populations*
+### 🚀 **New in Latest Version**
+- **No setup required** - automatically downloads spatial data
+- **Works anywhere** - species and region agnostic
+- **Smart caching** - faster subsequent runs
+- **Selective processing** - choose specific K values
+- **Enhanced water features** - combines multiple data sources
+
+| CV Error Analysis | Spatial Genetic Structure |
+|:--:|:--:|
+| ![CV Error Plot](examples/Pdepint/plot_results/cv_error_plot.png) | ![Spatial Map K=3](examples/Pdepint/plot_results/admixture_map_K3.png) |
+| *Cross-validation error across K values* | *Spatial visualization of genetic structure (K=3)* |
+
+| Population Admixture Structure |
+|:--:|
+| ![Admixture Barplot K=3](examples/Pdepint/plot_results/admixture_barplot_K3.png) |
+| *Individual ancestry proportions for K=3 in Petunia populations* |
 
 ## Features
 
-- **Spatial-Genomic Integration**: Combines genetic data with elevation models, water bodies, and country boundaries
-- **Publication-Ready Visualizations**: Creates high-quality figures for scientific publications
-- **Reproducible Workflow**: Configuration management and session tracking
-- **Parallel Processing**: Efficient handling of large genomic datasets
-- **Customizable**: Adaptable to other species and study regions
+- **🌍 Species/Region Agnostic**: Works with any species and geographic region worldwide
+- **🗺️ Automatic Spatial Data**: Downloads elevation, water bodies, and boundaries automatically based on sample coordinates
+- **📊 Adaptive Map Extent**: Map boundaries automatically adjust to your data coordinates with configurable padding
+- **💾 Smart Caching**: Spatial data is cached locally to speed up subsequent runs
+- **🎨 Publication-Ready Visualizations**: Creates high-quality figures for scientific publications
+- **🔄 Reproducible Workflow**: Configuration management and session tracking
+- **⚡ Parallel Processing**: Efficient handling of large genomic datasets
+- **🎯 Flexible K Selection**: Process all K values or specify a single K value
 
 ## Installation
 
@@ -44,33 +61,41 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
   ```
 - Install required R packages:  
   ```bash
-  Rscript -e "install.packages(c('argparse', 'dotenv', 'sf', 'terra', 'tmap', 'ggplot2', 'dplyr', 'tidyr', 'future.apply', 'purrr',   'RColorBrewer'))"
+  Rscript -e "install.packages(c('argparse', 'dotenv', 'sf', 'terra', 'tmap', 'ggplot2', 'dplyr', 'tidyr', 'future.apply', 'purrr', 'RColorBrewer', 'rnaturalearth', 'rnaturalearthdata', 'osmdata', 'elevatr', 'digest'))"
   ```
-- Configure environment:
+- Configure environment (optional - only needed if using custom spatial data):
   ```bash
-  # Set project home directory
-  echo "PAXIL_HOME=$(pwd)" >> ~/.Renviron
+  # Copy and customize environment file
+  cp .env .env.local
+  nano .env.local  # Update with your custom spatial data paths if needed
   ```
-- Copy and edit environment template
-  ```bash
-  cp config/environment_template.R .paxil_env
-  nano .paxil_env  # Update paths to your spatial data
-  ```
-- Verify configuration:
-  ```bash
-  Rscript config/verify_environment.R
-  ```
+- **No additional configuration needed!** The pipeline automatically downloads spatial data as needed.
 ## Usage
-### Basic Execution
-  ```bash
-  Rscript R/admixture_visualization.R \
-    --input_dir path/to/admixture_results \
-    --fam path/to/plink.fam \
-    --popmap path/to/popmap.csv \
-    --coords path/to/coordinates.csv \
-    --output_dir results
-    --dpi 300
-  ```
+
+### Basic Execution (All K values)
+```bash
+cd R/
+Rscript admixture_visualization.R \
+  --input_dir path/to/admixture_results \
+  --fam path/to/plink.fam \
+  --popmap path/to/popmap.csv \
+  --coords path/to/coordinates.csv \
+  --output_dir results \
+  --dpi 300
+```
+
+### Process Specific K Value Only
+```bash
+cd R/
+Rscript admixture_visualization.R \
+  --input_dir path/to/admixture_results \
+  --fam path/to/plink.fam \
+  --popmap path/to/popmap.csv \
+  --coords path/to/coordinates.csv \
+  --output_dir results \
+  --k_value 3 \
+  --dpi 300
+```
 ### Command Line Options
 |Argument|Description|Default|
 |---|---|---|
@@ -79,8 +104,9 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 |--popmap|CSV mapping samples to populations|```$EXAMPLE_POPMAP```|
 |--coords|CSV with population coordinates|```$EXAMPLE_COORDS```|
 |--output_dir|Output directory|```$EXAMPLE_OUTPUT_DIR```|
+|--k_value|Process only this K value (optional)|All K values|
 |--parallel_workers|Number of parallel workers|4|
-|--dpi|Resolution for the PNG plots (mainly, the maps)|300|
+|--dpi|Resolution for PNG plots (maps)|300|
 
 ## Input Files
 ### ADMIXTURE Output Directory:
@@ -113,74 +139,136 @@ results/
   ├── admixture_map_K2.png        # Spatial map for K=2
   ├── admixture_map_K3.png        # Spatial map for K=3
   ├── admixture_barplot_K2.pdf    # Admixture proportions barplot for K=2
-  ├── admixture_barplot_K2.pdf    # Admixture proportions barplot for K=3
+  ├── admixture_barplot_K3.pdf    # Admixture proportions barplot for K=3
   └── session_info.txt            # Reproducibility information
 ```
 
+**Note**: Maps are generated as PNG files (suitable for presentations/web), while barplots and CV error plots are generated as PDF files (vector format for publications). PNG versions of barplots and CV plots can be easily generated using tools like `sips` (macOS) or ImageMagick for documentation purposes.
+
 ## Example Dataset
-Run with included sample data:
+
+### Run with included *Petunia* sample data:
+
+**Process all K values:**
 ```bash
-  Rscript R/admixture_visualization.R \
-    --input_dir examples/Pdepint \
-    --fam examples/Pdepint/Pdepint_M095_noSele.fam \
-    --popmap examples/Pdepint/Pops_Pdepint.csv \
-    --coords examples/Pdepint/Pdepint_Lat_Long_Coords.csv \
-    --output_dir examples/Pdepint/plot_results
+cd R/
+Rscript admixture_visualization.R \
+  --input_dir ../examples/Pdepint \
+  --fam ../examples/Pdepint/Pdepint_M095_noSele.fam \
+  --popmap ../examples/Pdepint/Pops_Pdepint.csv \
+  --coords ../examples/Pdepint/Pdepint_Lat_Long_Coords.csv \
+  --output_dir ../examples/Pdepint/plot_results
 ```
 
-# Spatial Data Requirements
-|Data Type|Description|Source|
-|---|---|---|
-|Country Boundaries|Administrative boundaries|GADM|
-|Water Bodies|Lakes and rivers|Natural Earth|
-|Elevation|Digital elevation models|SRTM|
+**Process only K=3:**
+```bash
+cd R/
+Rscript admixture_visualization.R \
+  --input_dir ../examples/Pdepint \
+  --fam ../examples/Pdepint/Pdepint_M095_noSele.fam \
+  --popmap ../examples/Pdepint/Pops_Pdepint.csv \
+  --coords ../examples/Pdepint/Pdepint_Lat_Long_Coords.csv \
+  --output_dir ../examples/Pdepint/plot_results \
+  --k_value 3
+```
 
-# Customization
-## For Other Species/Regions
-- Modify bounding box in command line or code
+## Spatial Data (Automatic)
 
-- Update coordinate reference system in R/spatial_helpers.R
+The pipeline automatically downloads and caches spatial data based on your sample coordinates:
 
-- Adjust color palettes in R/plot_formats.R
+|Data Type|Description|Source|Cache Location|
+|---|---|---|---|
+|**Water Bodies**|Rivers and lakes|OpenStreetMap|`cache_maps/osm_water/`|
+|**Elevation**|Digital elevation models|SRTM (via elevatr)|`cache_maps/`|
 
-## Extending Functionality
-- Add new visualizations in R/plot_formats.R
+### Automatic Features:
+- **Adaptive extent**: Map boundaries automatically fit your data coordinates
+- **Smart caching**: Downloaded data is cached locally for faster subsequent runs
+- **Multi-source water data**: Combines OpenStreetMap and Natural Earth water features
+- **Configurable resolution**: Elevation data resolution adjustable via `elev_zoom` parameter
 
-- Incorporate additional spatial layers in R/spatial_helpers.R
+## Customization
 
+### ✅ Ready to Use for Any Species/Region
+The pipeline is now **fully species and region agnostic**! Simply provide your coordinates and it will:
+- Automatically detect the appropriate geographic region
+- Download relevant spatial data (boundaries, water, elevation)
+- Adjust map extent to fit your data
+
+### Advanced Customization Options
+
+**Modify map appearance:**
+- Adjust color palettes in `R/plot_formats.R`
+- Customize elevation resolution by modifying `elev_zoom` in `load_basemap_data()`
+- Change map padding by adjusting the `padding` parameter
+
+**Extend functionality:**
+- Add new visualizations in `R/plot_formats.R`
+- Incorporate additional spatial layers in `R/spatial_helpers.R`
 - Integrate with other genetics tools (PLINK, fastSTRUCTURE)
 
-# Reproducibility
-## The pipeline generates:
+**Use custom spatial data:**
+- Modify the `.env` file to specify paths to your own spatial datasets
+- Override automatic downloads with pre-processed local files
 
-- Session information
+## Reproducibility
 
-- Package versions
+The pipeline ensures reproducible results through:
 
-- Execution parameters
+- **Session information**: Complete R environment details saved to `session_info.txt`
+- **Package versions**: All dependencies and versions recorded
+- **Execution parameters**: Command-line arguments logged
+- **Cached spatial data**: Consistent spatial layers across runs
+- **Deterministic downloads**: Spatial data integrity verified through caching
 
-- Environment configuration
+### Cache Management
+- Spatial data cached in `cache_maps/` directory
+- Cache automatically managed - no manual cleanup needed
+- Cached files speed up subsequent analyses
 
-# Citation
+## Citation
 If using this software, please cite:
 ```bibtex
-  @software{petunia_admixture_pipeline,
-    author = {Sebastián Guzmán},
-    title = {Petunia Admixture Spatial Visualization Pipeline},
-    year = {2025},
-    url = {https://github.com/seguzmanro/petunia-admixture}
-  }
+@software{admixture_spatial_pipeline,
+  author = {Sebastián Guzmán Rodríguez},
+  title = {Admixture Spatial Visualization Pipeline: Species-agnostic visualization of population genetic structure},
+  year = {2025},
+  url = {https://github.com/seguzmanro/admixture-spatial-pipeline}
+}
 ```
 
 # License
 MIT License - see LICENSE for details
 
-# Support
+## Troubleshooting
+
+### Common Issues
+
+**Spatial data download fails:**
+- Check internet connection
+- Verify coordinates are in valid lon/lat format
+- Clear cache: `rm -rf cache_maps/` and retry
+
+**Memory issues with large datasets:**
+- Reduce elevation resolution by decreasing `elev_zoom` in `spatial_helpers.R`
+- Process individual K values using `--k_value` parameter
+
+**Maps appear empty or incorrect:**
+- Verify coordinate system (should be WGS84 decimal degrees)
+- Check coordinate column names match expected format (lon, lat)
+- Ensure coordinates are in correct order (longitude, latitude)
+
+### Performance Tips
+- First run may be slower due to spatial data downloads
+- Subsequent runs are much faster thanks to caching
+- Use `--k_value` to process specific K values for faster testing
+- Reduce `--dpi` for faster preview generation
+
+## Support
 For questions or issues:
 
-1. Check Troubleshooting Guide
-
-2. Open a GitHub Issue
+1. Check the troubleshooting section above
+2. Open a GitHub Issue with your coordinate range and error messages
 
 ---
 
