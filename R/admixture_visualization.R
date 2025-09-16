@@ -3,11 +3,11 @@
 # Author: [Sebastian Guzman] (modified for modularity)
 # Description: Generates visualization maps from individual or batch Q files, with optional CV error plots.
 # K value is determined from Q file content (number of columns).
-# Separate script, more modular design.
+# Uses config.yaml for configuration; CLI overrides config.
 
 get_script_dir <- function() {
   #' Get the directory of the currently running R script
-  #' 
+  #'
   #' @return The directory of the R script.
   #' @note This function is designed to work when the script is run with Rscript.
   args <- commandArgs(trailingOnly = FALSE)
@@ -230,7 +230,7 @@ execute_pipeline <- function(args) {
     }
   }
   
-  # Spatial setup (same as original)
+  # Spatial setup
   cache_path <- file.path(script_dir, "cache_maps")
   message("Using cache directory: ", cache_path)
   spatial_data <- load_basemap_data(
@@ -243,9 +243,10 @@ execute_pipeline <- function(args) {
 
   # Create bounding box (custom or adaptive)
   pop_sf <- create_population_sf(data$popcoords)
-  if (!is.null(args$bbox) && is.list(args$bbox)) {
+  if (!is.null(args$bbox) && is.list(args$bbox) && length(args$bbox) == 4) {
     study_bbox <- st_bbox(unlist(args$bbox), crs = st_crs(4326))
-    message("Using custom bounding box: ", paste(unlist(args$bbox), collapse = ", "))
+    message("Using custom bounding box: xmin=", args$bbox$xmin, ", ymin=", args$bbox$ymin, 
+            ", xmax=", args$bbox$xmax, ", ymax=", args$bbox$ymax)
   } else {
     padding <- ifelse(is.null(args$padding), 0.15, args$padding)
     adapt_bbox <- adaptive_bbox(pop_sf, padding = padding)
@@ -299,6 +300,11 @@ execute_pipeline <- function(args) {
           position = c("center", "top")
         )
       
+      # Add population labels if requested
+      if (!is.null(args$labels) && args$labels) {
+        full_map <- full_map + tm_text("pop", size = 0.7, ymod = 1.7, col = "black", fontface = "bold")
+      }
+      
       tmap_save(
         full_map, 
         file.path(args$output_dir, paste0("admixture_map_K", k_val, ".png")),
@@ -324,61 +330,61 @@ main <- function() {
     description = "Modular Spatial Visualization of ADMIXTURE Results"
   )
   # Config file
-  parser$add_argument("--conf_file", default = "conf/conf.yaml",
-                      help = "Path to config.yaml file (overrides CLI args and .env)")
+  parser$add_argument("--conf_file", default = NULL,
+                      help = "Path to config.yaml file (overrides CLI args)")
   # Input modes
-  parser$add_argument("--q_file", default = NULL,
+  parser$add_argument("--q_file", default = NULL, 
                       help = "Path to single Q file (single mode)")
-  parser$add_argument("--input_dir", default = NULL,
+  parser$add_argument("--input_dir", default = "", 
                       help = "Directory with multiple Q files (batch mode)")
   parser$add_argument("--log_dir", default = NULL,
                       help = "Optional: Directory with .out files for CV error plot")
   # Common inputs
   parser$add_argument("--k_value", type = "integer", default = NULL,
                       help = "Optional: Process only this K value")
-  parser$add_argument("--fam", default = NULL,
+  parser$add_argument("--fam", default = "", 
                       help = "PLINK .fam file")
-  parser$add_argument("--popmap", default = NULL,
+  parser$add_argument("--popmap", default = "", 
                       help = "Population mapping CSV")
-  parser$add_argument("--coords", default = NULL,
+  parser$add_argument("--coords", default = "", 
                       help = "Population coordinates CSV")
-  parser$add_argument("--output_dir", default = NULL,
+  parser$add_argument("--output_dir", default = "results", 
                       help = "Output directory")
   parser$add_argument("--parallel_workers", type = "integer", default = 4,
                       help = "Number of parallel workers")
   parser$add_argument("--dpi", type = "integer", default = 300,
                       help = "DPI resolution for PNG plots (maps)")
-  # Spatial options (CLI support for consistency)
+  # Spatial options
   parser$add_argument("--bbox", type = "character", default = NULL,
-                      help = "Custom bbox as 'xmin,ymin,xmax,ymax' string (overrides auto)")
+                      help = "Custom bbox as 'xmin,ymin,xmax,ymax' string")
   parser$add_argument("--padding", type = "double", default = NULL,
                       help = "Padding for auto bbox (default: 0.15)")
+  # Labels
+  parser$add_argument("--labels", action="store_true",
+                      help = "Add population labels to maps")
   
   args <- parser$parse_args()
   
-  # Load config if provided
-  if (!is.null(args$conf_file)) {
-    if (!file.exists(args$conf_file)) {
-      stop("Config file not found: ", args$conf_file)
-    }
+  conf_loaded <- FALSE
+  if (!is.null(args$conf_file) && file.exists(args$conf_file)) {
     config <- yaml::read_yaml(args$conf_file)
-    # Override args with config values
+    # Override args with config
     for (name in names(config)) {
       if (name %in% names(args)) {
         args[[name]] <- config[[name]]
       }
     }
-    # Do not load .env if config provided
-    message("Loaded configuration from: ", args$conf_file)
+    conf_loaded <- TRUE
+    message("Configuration loaded from: ", args$conf_file)
   }
   
-  # Parse bbox if string from CLI
+  # Parse bbox if character
   if (!is.null(args$bbox) && is.character(args$bbox)) {
     bbox_vals <- as.numeric(strsplit(args$bbox, ",")[[1]])
-    if (length(bbox_vals) != 4) {
+    if (length(bbox_vals) != 4 || any(is.na(bbox_vals))) {
       stop("Invalid bbox format. Use 'xmin,ymin,xmax,ymax'")
     }
-    args$bbox <- list(xmin = bbox_vals[1], ymin = bbox_vals[2],
+    args$bbox <- list(xmin = bbox_vals[1], ymin = bbox_vals[2], 
                       xmax = bbox_vals[3], ymax = bbox_vals[4])
   }
   

@@ -3,17 +3,18 @@
 
 # Input options (single or batch mode)
 q_file: null  # Path to single Q file, or null for batch
-input_dir: ../examples/Pdepint  # Directory with Q files for batch mode
-log_dir: ../examples/Pdepint  # Optional directory with .out files for CV plot
+input_dir: examples/Pdepint  # Directory with Q files for batch mode
+log_dir: examples/Pdepint  # Optional directory with .out files for CV plot
 
 # Data files
-fam: ../examples/Pdepint/Pdepint_M095_noSele.fam
-popmap: ../examples/Pdepint/Pops_Pdepint.csv
-coords: ../examples/Pdepint/Pdepint_Lat_Long_Coords.csv
+fam: examples/Pdepint/Pdepint_M095_noSele.fam
+popmap: examples/Pdepint/Pops_Pdepint.csv
+coords: examples/Pdepint/Pdepint_Lat_Long_Coords.csv
 
 # Output and processing
-output_dir: ../examples/Pdepint/plot_results
+output_dir: examples/Pdepint/plot_results
 k_value: null  # Process specific K, or null for all K > 1
+labels: true # For population labels
 parallel_workers: 4
 dpi: 300
 
