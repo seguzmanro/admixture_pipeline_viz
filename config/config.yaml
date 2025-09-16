@@ -1,0 +1,24 @@
+# Admixture Visualization Pipeline Configuration
+# This file overrides CLI arguments and .env defaults
+
+# Input options (single or batch mode)
+q_file: null  # Path to single Q file, or null for batch
+input_dir: ../examples/Pdepint  # Directory with Q files for batch mode
+log_dir: ../examples/Pdepint  # Optional directory with .out files for CV plot
+
+# Data files
+fam: ../examples/Pdepint/Pdepint_M095_noSele.fam
+popmap: ../examples/Pdepint/Pops_Pdepint.csv
+coords: ../examples/Pdepint/Pdepint_Lat_Long_Coords.csv
+
+# Output and processing
+output_dir: ../examples/Pdepint/plot_results
+k_value: null  # Process specific K, or null for all K > 1
+parallel_workers: 4
+dpi: 300
+
+# Spatial options (optional)
+bbox: null  # Custom bbox as [xmin, ymin, xmax, ymax], or null for auto
+padding: 0.15  # Padding for auto bbox (0.0 to 1.0)
+
+# Example usage: Rscript R/admixture_visualization.R --conf_file config/config.yaml
