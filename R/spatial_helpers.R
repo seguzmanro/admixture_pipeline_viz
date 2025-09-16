@@ -9,20 +9,21 @@ library(elevatr)
 library(terra)
 library(digest)
 
-cache_dir <- "cache_maps/osm_water"
-if (!dir.exists(cache_dir)) {
-  dir.create(cache_dir, recursive = TRUE)
-}
+# cache_dir <- "cache_maps/osm_water"
 
-get_osm_water_data <- function(bbox_poly) {
+get_osm_water_data <- function(bbox_poly, osm_cache_dir) {
   #' Get OSM water data with caching
   #' 
   #' @param bbox_poly The bounding box polygon
   #' @return List containing rivers, lakes_poly, and lakes_multi
   
+  if (!dir.exists(osm_cache_dir)) {
+    dir.create(osm_cache_dir, recursive = TRUE)
+  }
+
   # Create a unique key for this bounding box
   bbox_key <- digest::digest(bbox_poly)
-  cache_file <- file.path(cache_dir, paste0(bbox_key, ".rds"))
+  cache_file <- file.path(osm_cache_dir, paste0(bbox_key, ".rds"))
   
   # Check if cached data exists
   if (file.exists(cache_file)) {
@@ -74,7 +75,12 @@ load_basemap_data <- function(pop_coords,
                               padding = 2,
                               simplify_tolerance = 0.01,
                               elev_zoom = 5,
-                              cache_dir = "cache_maps") {
+                              cache_dir = NULL) {
+  
+  if (is.null(cache_dir)) {
+    stop("An absolute path must be provided for 'cache_dir'.")
+  }
+  
   # Ensure sf object
   if (!inherits(pop_coords, "sf")) {
     if (!all(c(lon_col, lat_col) %in% names(pop_coords))) {
@@ -111,7 +117,7 @@ load_basemap_data <- function(pop_coords,
     st_crop(bbox_poly)
 
   # OSM water data
-  osm_water_data <- get_osm_water_data(bbox_poly)
+  osm_water_data <- get_osm_water_data(bbox_poly, osm_cache_dir = file.path(cache_dir, "osm_water"))
 
   # OSM Rivers (typically represented as lines)
   osm_rivers_lines <- osm_water_data$rivers %>% 

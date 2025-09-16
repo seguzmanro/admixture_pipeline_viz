@@ -11,6 +11,7 @@
 .Rapp.history
 .DS_Store
 .Rproj.user
+Rplots.pdf
 
 # R session Data
 .RData

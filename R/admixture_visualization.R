@@ -3,6 +3,22 @@
 # Author: [Sebastian Guzman]
 # Description: Integrates ADMIXTURE results with spatial data using modular helpers
 
+get_script_dir <- function() {
+  #' Get the directory of the currently running R script
+  #'
+  #' @return The directory of the R script.
+  #' @note This function is designed to work when the script is run with Rscript.
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("--file=", args, value = TRUE)
+  if (length(file_arg) == 0) {
+    stop("Cannot determine script path. Please run with Rscript.")
+  }
+  return(dirname(sub("--file=", "", file_arg[1])))
+}
+
+# Determine the script's directory
+script_dir <- get_script_dir()
+
 # Load Core Packages ----------------------------------------------------------
 
 suppressPackageStartupMessages({
@@ -19,8 +35,8 @@ suppressPackageStartupMessages({
 })
 
 # Load Custom Modules ---------------------------------------------------------
-source("spatial_helpers.R")
-source("plot_formats.R")
+source(file.path(script_dir, "spatial_helpers.R"))
+source(file.path(script_dir, "plot_formats.R"))
 
 # Configuration ---------------------------------------------------------------
 initialize_environment <- function() {
@@ -28,7 +44,7 @@ initialize_environment <- function() {
   #' 
   #' @return NULL
   
-  project_home <- '../'
+  project_home <- dirname(script_dir) 
   dotenv::load_dot_env(file.path(project_home, ".env"))
   
 }
@@ -197,7 +213,16 @@ execute_pipeline <- function(args) {
     }
   }
   # Load spatial data using spatial helpers
-  spatial_data <- load_basemap_data(data$popcoords, lon_col = 'lon', lat_col = 'lat', elev_zoom = 5)
+  # Define the absolute path for the cache directory relative to the script's location
+  cache_path <- file.path(script_dir, "cache_maps")
+  message("Using cache directory: ", cache_path)
+  spatial_data <- load_basemap_data(
+    data$popcoords, 
+    lon_col = 'lon', 
+    lat_col = 'lat', 
+    elev_zoom = 5,
+    cache_dir = cache_path  # Pass the correct, absolute path here
+  )
 
   # Create adaptive bounding box
   pop_sf <- create_population_sf(data$popcoords)
