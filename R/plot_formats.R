@@ -6,6 +6,7 @@
 library(ggplot2)
 library(RColorBrewer)
 library(ggtext)
+library(cowplot)
 
 #' Theme for scientific publications
 #'
@@ -321,4 +322,95 @@ format_manhattan_plot <- function(gwas_data,
       panel.grid.major.x = element_blank(),
       axis.title.y = element_markdown()
     )
+}
+#' Format DAPC scatter plot
+#'
+#' Creates a standardized ggplot version of the DAPC scatter plot with cumulative variance inset.
+#'
+#' @param dapc DAPC object from adegenet package
+#' @param nGroups Number of genetic clusters/groups
+#' @param popmap Population map data frame
+#' @return ggplot object with inset
+#'
+format_dapc_scatterplot <- function(dapc, nGroups, popmap) {
+  # Extract coordinates and group assignments
+  ld_scores <- dapc$ind.coord
+  grp <- dapc$grp
+  
+  # Prepare data for plotting
+  plot_data <- data.frame(
+    LD1 = ld_scores[, 1],
+    LD2 = ld_scores[, 2],
+    group = factor(grp, labels = paste("Cluster", 1:nGroups)),
+    sample = rownames(ld_scores)
+  )
+  
+  # Merge with popmap if needed (for potential future use)
+  plot_data <- merge(plot_data, popmap, by.x = "sample", by.y = "indv", all.x = TRUE)
+  
+  # Use standardized genetic palette
+  cluster_colors <- genetic_palette(nGroups)
+  
+  # Calculate variance explained for LD axes (discriminant axes)
+  if (length(dapc$eig) >= 2) {
+    var_ld1 <- round(100 * dapc$eig[1] / sum(dapc$eig), 1)
+    var_ld2 <- round(100 * dapc$eig[2] / sum(dapc$eig), 1)
+  } else {
+    var_ld1 <- 100
+    var_ld2 <- 0
+  }
+  
+  # Create main scatter plot
+  p <- ggplot(plot_data, aes(x = LD1, y = LD2, color = group)) +
+    geom_point(pch = 16, size = 1.5, alpha = 0.8) +
+    scale_color_manual(values = cluster_colors) +
+    labs(
+      x = paste("LD1 (", var_ld1, "%)", sep = ""),
+      y = paste("LD2 (", var_ld2, "%)", sep = ""),
+      color = "Cluster"
+    ) +
+    theme_genomics() +
+    theme(
+      legend.position = "right",
+      legend.key.size = unit(0.8, "lines"),
+      legend.text = element_text(size = rel(0.8))
+    ) +
+    guides(color = guide_legend(override.aes = list(size = 3)))
+  
+  # Prepare inset data for cumulative PCA variance
+  pca_eig <- dapc$pca.eig
+  cum_var <- 100 * cumsum(pca_eig) / sum(pca_eig)
+  inset_data <- data.frame(
+    axis = 1:length(cum_var),
+    cum_var = cum_var
+  )
+  
+  # Create inset plot
+  inset_p <- ggplot(inset_data, aes(x = axis, y = cum_var)) +
+    geom_hline(yintercept = 100, color = "lightgrey", linetype = "dashed", alpha = 0.5) +
+    geom_step(color = "black", linewidth = 1.5) +
+    geom_point(color = "black", size = 0.5) +
+    scale_x_continuous(breaks = pretty(1:length(cum_var), n = 5),
+                       expand = expansion(mult = c(0.01, 0.05))) +
+    scale_y_continuous(breaks = pretty(c(0, cum_var), n = 5), limits = c(0, 100),
+                       expand = expansion(mult = c(0, 0.05))) +
+    labs(x = "PCA axis", y = "Cumulated variance (%)") +
+    theme_genomics(base_size = 8) +
+    theme(
+      plot.background = element_rect(fill = "white", color = NA),
+      panel.background = element_rect(fill = "white", color = NA),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(linewidth = 0.3, color = "grey80"),
+      axis.line = element_line(color = "black"),
+      axis.ticks = element_line(color = "black"),
+      axis.text = element_text(size = rel(0.8), color = "black"),
+      axis.title = element_text(size = rel(1.0), color = "black"),
+      legend.position = "none"
+    )
+  
+  # Combine with inset using cowplot (position similar to original: bottom left, but adjusted for ggplot)
+  p_with_inset <- ggdraw(p) +
+    draw_plot(inset_p, x = 0.02, y = 0.02, width = 0.28, height = 0.28)
+  
+  return(p_with_inset)
 }
