@@ -61,29 +61,47 @@ theme_genomics <- function(base_size = 11, base_family = "sans") {
 #' @param n Number of colors needed
 #' @return Vector of color values
 genetic_palette <- function(n) {
-  max_colors <- 13
+  max_colors <- 40
   if (n > max_colors) {
     warning("Requested ", n, " colors but maximum is ", max_colors)
     n <- max_colors
   }
-  
-  # Extended color-blind friendly palette
-  base_palette <- c(
-    "#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD",
-    "#8C564B", "#E377C2", "#7F7F7F", "#BCBD22", "#17BECF",
-    "#AEC7E8", "#FFBB78"
+
+  # Extended color palette combining multiple RColorBrewer palettes
+  # Similar to Python's approach with tab20b + tab20c
+  # Ordered by contrast: high contrast first, lower contrast last
+  palette_40 <- c(
+    # Set1 (8 colors) - highest contrast, most vibrant
+    "#377EB8", "#FF7F00", "#4DAF4A", "#E41A1C","#984EA3",
+    "#FFFF33", "#A65628", "#F781BF",
+
+    # Set3 (12 colors) - good contrast, varied and distinct
+    "#8DD3C7", "#FFFFB3", "#BEBADA", "#FB8072", "#80B1D3",
+    "#FDB462", "#B3DE69", "#FCCDE5", "#D9D9D9", "#BC80BD",
+    "#CCEBC5", "#FFED6F",
+
+    # Set2 (8 colors) - muted but still distinct
+    "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3", "#A6D854",
+    "#FFD92F", "#E5C494", "#B3B3B3",
+
+    # Paired (12 colors) - lowest contrast (pairs of similar colors)
+    "#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99",
+    "#E31A1C", "#FDBF6F", "#FF7F00", "#CAB2D6", "#6A3D9A",
+    "#FFFF99", "#B15928"
   )
-  
-  return(base_palette[1:n])
+
+  return(palette_40[1:n])
 }
 
 #' Format admixture bar plot
 #'
-#' @param data Data frame with admixture proportions
+#' @param q_matrix Data frame with admixture proportions
+#' @param popmap Population map data frame
 #' @param k_value Current K value
 #' @param sort_populations Whether to sort by population (logical)
+#' @param title Custom title for the plot (optional)
 #' @return Formatted ggplot object
-format_admixture_barplot <- function(q_matrix, popmap, k_value, sort_populations = TRUE) {
+format_admixture_barplot <- function(q_matrix, popmap, k_value, sort_populations = TRUE, title = NULL) {
   # Prepare data from Q matrix
   data <- as.data.frame(q_matrix)
   data$sample <- rownames(data)
@@ -120,13 +138,20 @@ format_admixture_barplot <- function(q_matrix, popmap, k_value, sort_populations
     long_data$sample <- factor(long_data$sample, levels = sample_order)
   }
   
+  # Create automatic title if not provided
+  if (is.null(title)) {
+    plot_title <- paste("Admixture Proportions - K =", k_value)
+  } else {
+    plot_title <- title
+  }
+
   # Create plot
   ggplot(long_data, aes(x = sample, y = proportion, fill = cluster)) +
     geom_col(width = 1) +
     scale_fill_manual(values = genetic_palette(k_value)) +
     scale_y_continuous(expand = c(0, 0)) +
     labs(
-      title = paste("Admixture Proportions - K =", k_value),
+      title = plot_title,
       x = "Samples",
       y = "Ancestry Proportion",
       fill = "Genetic\nCluster"
@@ -142,32 +167,92 @@ format_admixture_barplot <- function(q_matrix, popmap, k_value, sort_populations
     }
 }
 
-#' Format cross-validation error plot
+#' Format model selection plot (CV error, AIC, BIC, etc.)
 #'
-#' @param cv_data Data frame with CV errors
+#' @param data Data frame with K values and model selection criteria
+#' @param title Custom title for the plot (optional)
+#' @param method Method for selecting optimal K: 'min' (default) or 'diffNgroup'
 #' @return Formatted ggplot object
-format_cv_plot <- function(cv_data) {
-  min_k <- cv_data$K[which.min(cv_data$CV_error)]
-  
-  ggplot(cv_data, aes(x = K, y = CV_error)) +
+format_model_selection_plot <- function(data, title = NULL, method = "min") {
+  # Validate input data structure
+  if (ncol(data) != 2) {
+    stop("Input data must have exactly 2 columns")
+  }
+
+  if (!"K" %in% colnames(data)) {
+    stop("First column must be named 'K'")
+  }
+
+  # Validate method parameter
+  if (!method %in% c("min", "diffNgroup")) {
+    stop("Method must be either 'min' or 'diffNgroup'")
+  }
+
+  # Get the column names
+  k_col <- "K"
+  y_col <- setdiff(colnames(data), k_col)
+
+  # Determine optimal K based on method
+  if (method == "diffNgroup") {
+    # Calculate differences between consecutive K values
+    # diffNgroup finds the K where the difference is most significant
+    if (nrow(data) < 2) {
+      stop("diffNgroup method requires at least 2 K values")
+    }
+
+    # Calculate absolute differences between consecutive values
+    diffs <- abs(diff(data[[y_col]]))
+    # Find the K where the difference is maximized
+    # Add 1 because diff reduces the length by 1
+    optimal_idx <- which.max(diffs) + 1
+    optimal_k <- data$K[optimal_idx]
+
+    # Create automatic title if not provided
+    if (is.null(title)) {
+      title <- paste("Model Selection -", y_col, "(diffNgroup)")
+    }
+  } else {
+    # Default minimum behavior
+    optimal_k <- data$K[which.min(data[[y_col]])]
+
+    # Create automatic title if not provided
+    if (is.null(title)) {
+      title <- paste("Model Selection -", y_col)
+    }
+  }
+
+  # Create the plot
+  ggplot(data, aes(x = K, y = !!sym(y_col))) +
     geom_line(color = "#1F77B4", linewidth = 1) +
     geom_point(color = "#1F77B4", size = 3) +
-    geom_vline(xintercept = min_k, linetype = "dashed", color = "#D62728") +
+    geom_vline(xintercept = optimal_k, linetype = "dashed", color = "#D62728") +
     annotate(
-      # aes(x = min_k + 0.2, y = max(CV_error) * 0.95),
-      "text", x = min_k + 0.2, y = max(cv_data$CV_error) * 0.95,
-      label = paste("Optimal K =", min_k),
+      "text",
+      x = optimal_k + 0.2,
+      y = max(data[[y_col]]) * 0.95,
+      label = paste("Optimal K =", optimal_k, "(", method, ")"),
       color = "#D62728",
       hjust = 0,
       size = 4
     ) +
-    scale_x_continuous(breaks = unique(cv_data$K)) +
+    scale_x_continuous(breaks = unique(data$K)) +
     labs(
-      title = "ADMIXTURE Cross-Validation Error",
+      title = title,
       x = "Number of Clusters (K)",
-      y = "Cross-Validation Error"
+      y = y_col
     ) +
     theme_genomics()
+}
+
+#' Format cross-validation error plot (deprecated - use format_model_selection_plot)
+#'
+#' @param cv_data Data frame with CV errors
+#' @param method Method for selecting optimal K: 'min' (default) or 'diffNgroup'
+#' @return Formatted ggplot object
+#' @keywords internal
+format_cv_plot <- function(cv_data, method = "min") {
+  warning("format_cv_plot is deprecated. Use format_model_selection_plot instead.")
+  format_model_selection_plot(cv_data, "ADMIXTURE Cross-Validation Error", method)
 }
 
 #' Create a pie chart for population admixture
@@ -328,25 +413,58 @@ format_manhattan_plot <- function(gwas_data,
 #' Creates a standardized ggplot version of the DAPC scatter plot with cumulative variance inset.
 #'
 #' @param dapc DAPC object from adegenet package
-#' @param nGroups Number of genetic clusters/groups
-#' @param popmap Population map data frame
+#' @param nGroups Number of genetic clusters/groups (ignored if popmap is provided)
+#' @param popmap Population map data frame (optional). If provided, nGroups will be set to the number of unique populations.
 #' @return ggplot object with inset
 #'
-format_dapc_scatterplot <- function(dapc, nGroups, popmap) {
+format_dapc_scatterplot <- function(dapc, nGroups, popmap = NULL) {
   # Extract coordinates and group assignments
   ld_scores <- dapc$ind.coord
   grp <- dapc$grp
-  
+
   # Prepare data for plotting
   plot_data <- data.frame(
     LD1 = ld_scores[, 1],
     LD2 = ld_scores[, 2],
-    group = factor(grp, labels = paste("Cluster", 1:nGroups)),
+    group = grp,
     sample = rownames(ld_scores)
   )
-  
-  # Merge with popmap if needed (for potential future use)
-  plot_data <- merge(plot_data, popmap, by.x = "sample", by.y = "indv", all.x = TRUE)
+
+  # Handle popmap if provided
+  if (!is.null(popmap)) {
+    # Validate popmap structure
+    if (!"indv" %in% colnames(popmap) || !"pop" %in% colnames(popmap)) {
+      stop("popmap must contain 'indv' and 'pop' columns")
+    }
+
+    # Merge with popmap to get population information
+    plot_data <- merge(plot_data, popmap, by.x = "sample", by.y = "indv", all.x = TRUE)
+
+    # Check for missing population data
+    missing_pops <- sum(is.na(plot_data$pop))
+    if (missing_pops > 0) {
+      warning(missing_pops, " samples have no population assignment in popmap")
+    }
+
+    # Determine number of groups from unique populations
+    unique_pops <- unique(na.omit(plot_data$pop))
+    actual_nGroups <- length(unique_pops)
+
+    if (actual_nGroups == 0) {
+      stop("No valid population assignments found in popmap")
+    }
+
+    # Override nGroups with actual number of populations
+    nGroups <- actual_nGroups
+
+    # Create group labels from population names
+    plot_data$group <- factor(plot_data$pop, levels = unique_pops, labels = unique_pops)
+
+    message("Using ", nGroups, " populations from popmap: ", paste(unique_pops, collapse = ", "))
+  } else {
+    # Use generic cluster labels if no popmap provided
+    plot_data$group <- factor(grp, labels = paste("Cluster", 1:nGroups))
+  }
   
   # Use standardized genetic palette
   cluster_colors <- genetic_palette(nGroups)
