@@ -1,0 +1,39 @@
+Package: admixspatial
+Title: Spatial Visualization of ADMIXTURE Results
+Version: 0.1.0
+Authors@R: person("Sebastian", "Guzman Rodriguez", email = "sebastian.guzman@ufrgs.br", role = c("aut", "cre"))
+Description: A comprehensive R package for visualizing ADMIXTURE results with spatial context. 
+    Supports both library usage and command-line interface. Features include cross-validation 
+    error plots, admixture bar plots, and spatial maps with automatic geographic data integration.
+Depends: R (>= 4.0.0)
+Imports:
+    argparse,
+    yaml,
+    sf,
+    terra,
+    tmap,
+    ggplot2,
+    dplyr,
+    tidyr,
+    future.apply,
+    purrr,
+    RColorBrewer,
+    rnaturalearth,
+    rnaturalearthdata,
+    osmdata,
+    elevatr,
+    digest,
+    tools,
+    ggtext,
+    cowplot,
+    plyr,
+    grid
+Suggests: 
+    testthat,
+    knitr,
+    rmarkdown
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
+VignetteBuilder: knitr

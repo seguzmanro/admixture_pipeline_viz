@@ -1,0 +1,231 @@
+---
+title: "admixspatial: Spatial Visualization of ADMIXTURE Results"
+author: "Sebastian Guzman Rodriguez"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{admixspatial: Spatial Visualization of ADMIXTURE Results}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+The `admixspatial` package provides comprehensive tools for visualizing ADMIXTURE results with spatial context. It supports both library usage for integration with other R projects and command-line interface for batch processing.
+
+## Installation
+
+```r
+# Install from CRAN (when available)
+install.packages("admixspatial")
+
+# Or install from GitHub
+devtools::install_github("seguzmanro/admixspatial")
+```
+
+## Library Usage
+
+### Basic Usage
+
+```r
+library(admixspatial)
+
+# Quick visualization with minimal parameters
+quick_visualize(
+  q_file = "path/to/file.Q",
+  fam_file = "path/to/file.fam",
+  popmap_file = "path/to/popmap.csv",
+  coords_file = "path/to/coordinates.csv",
+  output_dir = "results"
+)
+```
+
+### Advanced Usage
+
+```r
+library(admixspatial)
+
+# Full control over parameters
+visualize_admixture(
+  q_file = "path/to/file.Q",
+  fam_file = "path/to/file.fam",
+  popmap_file = "path/to/popmap.csv",
+  coords_file = "path/to/coordinates.csv",
+  output_dir = "results",
+  k_value = 3,  # Process only K=3
+  labels = TRUE,  # Add population labels
+  dpi = 300,  # High resolution
+  bbox = c(-57, -34, -55, -32)  # Custom bounding box
+)
+```
+
+### Batch Processing
+
+```r
+library(admixspatial)
+
+# Process multiple Q files
+q_files <- list.files("admixture_results", pattern = "\\.Q$", full.names = TRUE)
+
+for (q_file in q_files) {
+  k_value <- as.numeric(sub(".*K(\\d+)\\..*", "\\1", basename(q_file)))
+
+  visualize_admixture(
+    q_file = q_file,
+    fam_file = "data.fam",
+    popmap_file = "popmap.csv",
+    coords_file = "coordinates.csv",
+    output_dir = paste0("results_K", k_value),
+    k_value = k_value,
+    labels = TRUE
+  )
+}
+```
+
+## Command Line Usage
+
+The package includes a command-line script that maintains backward compatibility with your existing workflow:
+
+```bash
+# Using config file (recommended)
+Rscript inst/scripts/admixture_visualization.R --conf_file config/config.yaml
+
+# Direct CLI usage
+Rscript inst/scripts/admixture_visualization.R \
+  --input_dir path/to/admixture_results \
+  --fam path/to/file.fam \
+  --popmap path/to/popmap.csv \
+  --coords path/to/coordinates.csv \
+  --output_dir results \
+  --k_value 3
+```
+
+## Input Files
+
+### Q Files (Admixture Proportions)
+- Single file: Provide via `q_file` parameter
+- Batch processing: Provide directory containing multiple `.Q` files
+
+### PLINK .fam File
+Standard PLINK format:
+```
+FAM001 SAMPLE001 0 0 0 -9
+FAM002 SAMPLE002 0 0 0 -9
+```
+
+### Population Map (popmap.csv)
+```
+indv,pop
+SAMPLE001,POP_A
+SAMPLE002,POP_B
+```
+
+### Population Coordinates (coordinates.csv)
+```
+pop,lon,lat
+POP_A,-56.123,-32.456
+POP_B,-55.987,-33.210
+```
+
+## Output Files
+
+The pipeline generates several output files:
+
+```
+results/
+├── cv_error_plot.pdf           # Cross-validation error plot (optional)
+├── admixture_map_K2.png        # Spatial map for K=2
+├── admixture_map_K3.png        # Spatial map for K=3
+├── admixture_barplot_K2.pdf    # Admixture proportions barplot for K=2
+├── admixture_barplot_K3.pdf    # Admixture proportions barplot for K=3
+└── session_info.txt            # Reproducibility information
+```
+
+## Configuration
+
+Create a `config.yaml` file to store default parameters:
+
+```yaml
+# Input options
+q_file: null
+input_dir: examples/data
+log_dir: examples/data
+
+# Data files
+fam: examples/data/file.fam
+popmap: examples/data/popmap.csv
+coords: examples/data/coordinates.csv
+
+# Output and processing
+output_dir: results
+k_value: null
+labels: true
+parallel_workers: 4
+dpi: 300
+
+# Spatial options
+bbox: null
+padding: 0.15
+```
+
+## Advanced Features
+
+### Custom Color Palettes
+```r
+# Use custom colors for genetic clusters
+custom_colors <- c("#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7")
+# Modify the genetic_palette function or pass custom colors to plotting functions
+```
+
+### Spatial Data Caching
+The package automatically caches spatial data (elevation, water bodies, boundaries) for faster subsequent runs. Cache is stored in `cache_maps/` directory.
+
+### Parallel Processing
+```r
+# Enable parallel processing for large datasets
+visualize_admixture(
+  # ... other parameters ...
+  parallel_workers = 8  # Adjust based on your system
+)
+```
+
+## Troubleshooting
+
+### Memory Issues
+- Reduce elevation resolution by modifying `elev_zoom` parameter
+- Process individual K values using `k_value` parameter
+- Reduce DPI for preview generation
+
+### Spatial Data Issues
+- Check coordinate format (should be WGS84 decimal degrees)
+- Verify coordinate column names match expected format
+- Clear cache: `rm -rf cache_maps/` and retry
+
+### Missing Dependencies
+Ensure all required packages are installed:
+```r
+install.packages(c(
+  'argparse', 'yaml', 'sf', 'terra', 'tmap', 'ggplot2',
+  'dplyr', 'tidyr', 'future.apply', 'purrr', 'RColorBrewer',
+  'rnaturalearth', 'rnaturalearthdata', 'osmdata', 'elevatr', 'digest'
+))
+```
+
+## Citation
+
+If using this software, please cite:
+
+```bibtex
+@software{admixspatial,
+  author = {Sebastian Guzman Rodriguez},
+  title = {admixspatial: Spatial Visualization of ADMIXTURE Results},
+  year = {2025},
+  url = {https://github.com/seguzmanro/admixspatial}
+}

@@ -1,7 +1,8 @@
 # Admixture Spatial Visualization Pipeline
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![R Version](https://img.shields.io/badge/R-%3E%3D%204.0.0-blue)](https://www.r-project.org/)
+[![R Version](https://img.shields.io/badge/R-%3E%3D%204.4.0-blue)](https://www.r-project.org/)
+[![CRAN Status](https://www.r-pkg.org/badges/version/admixspatial)](https://cran.r-project.org/package=admixspatial)
 
 ## Overview
 
@@ -26,7 +27,7 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 
 | CV Error Analysis | Spatial Genetic Structure |
 |:--:|:--:|
-| ![CV Error Plot](examples/Pdepint/plot_results/cv_error_plot.png) | ![Spatial Map K=3](examples/Pdepint/plot_results/admixture_map_K3.png) |
+| ![CV Error Plot](inst/extdata/Pdepint/plot_results/cv_error_plot.png) | ![Spatial Map K=3](inst/extdata/Pdepint/plot_results/admixture_map_K3.png) |
 | *Cross-validation error across K values* | *Spatial visualization of genetic structure (K=3)* |
 
 | Population Admixture Structure |
@@ -50,6 +51,16 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 
 ## Installation
 
+### Package Installation (Recommended)
+
+```bash
+# Install from CRAN (NOT YET available)
+install.packages("admixspatial")
+
+# Or install from GitHub
+devtools::install_github("seguzmanro/admixture_pipeline_viz")
+```
+
 ### Prerequisites
 
 - R (≥ 4.0.0)
@@ -57,26 +68,84 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
   ```bash
   # Ubuntu/Debian
   sudo apt-get install libudunits2-dev libgdal-dev libgeos-dev libproj-dev
-  
+
   # Fedora/CentOS
   sudo dnf install udunits2-devel gdal-devel geos-devel proj-devel
+
+  # macOS (using Homebrew)
+  brew install udunits gdal geos proj
   ```
-### Setup
+
+### CLI Installation (Legacy)
+
 - Clone the repository:
   ```bash
   git clone https://github.com/seguzmanro/admixture_pipeline_viz.git
-  cd admixture_pipeline
+  cd admixture_pipeline_viz
   ```
-- Install required R packages:  
+- Install required R packages:
   ```bash
   Rscript -e "install.packages(c('argparse', 'yaml', 'sf', 'terra', 'tmap', 'ggplot2', 'dplyr', 'tidyr', 'future.apply', 'purrr', 'RColorBrewer', 'rnaturalearth', 'rnaturalearthdata', 'osmdata', 'elevatr', 'digest'))"
   ```
 - **No additional configuration needed!** Use the provided `config/config.yaml` for example data, or create your own. The pipeline automatically downloads spatial data as needed.
 ## Usage
 
-### Basic Execution (All K values, CV error plot)
+### Package Usage (Recommended)
+
+#### Library Usage
+```r
+library(admixspatial)
+
+# Quick visualization with minimal parameters
+quick_visualize(
+  q_file = "path/to/file.Q",
+  fam_file = "path/to/file.fam",
+  popmap_file = "path/to/popmap.csv",
+  coords_file = "path/to/coordinates.csv",
+  output_dir = "results"
+)
+
+# Advanced usage with full control
+visualize_admixture(
+  q_file = "path/to/file.Q",
+  fam_file = "path/to/file.fam",
+  popmap_file = "path/to/popmap.csv",
+  coords_file = "path/to/coordinates.csv",
+  output_dir = "results",
+  k_value = 3,  # Process only K=3
+  labels = TRUE,  # Add population labels
+  dpi = 300,
+  cache_dir = "/custom/cache/path"  # Optional custom cache directory
+)
+```
+
+#### Batch Processing
+```r
+library(admixspatial)
+
+# Process multiple Q files
+q_files <- list.files("admixture_results", pattern = "\\.Q$", full.names = TRUE)
+
+for (q_file in q_files) {
+  k_value <- as.numeric(sub(".*K(\\d+)\\..*", "\\1", basename(q_file)))
+
+  visualize_admixture(
+    q_file = q_file,
+    fam_file = "data.fam",
+    popmap_file = "popmap.csv",
+    coords_file = "coordinates.csv",
+    output_dir = paste0("results_K", k_value),
+    k_value = k_value,
+    labels = TRUE
+  )
+}
+```
+
+### CLI Usage (Legacy Support)
+
+#### Basic Execution (All K values, CV error plot)
 ```bash
-Rscript R/admixture_visualization.R \
+Rscript inst/scripts/admixture_visualization.R \
   --input_dir path/to/admixture_results \
   --log_dir path/to/admixture_results \
   --fam path/to/plink.fam \
@@ -86,9 +155,9 @@ Rscript R/admixture_visualization.R \
   --dpi 300
 ```
 
-### Using Config File
+#### Using Config File
 ```bash
-Rscript R/admixture_visualization.R \
+Rscript inst/scripts/admixture_visualization.R \
   --conf_file config/config.yaml
 ```
 
@@ -105,6 +174,7 @@ Rscript R/admixture_visualization.R \
 |--output_dir|Output directory|```$EXAMPLE_OUTPUT_DIR```|
 |--parallel_workers|Number of parallel workers|4|
 |--dpi|Resolution for PNG plots (maps)|300|
+|--cache_dir|Directory for caching spatial data|```NULL``` (uses package library)|
 
 ## Input Files
 ### Configuration File (config.yaml)
@@ -124,6 +194,7 @@ parallel_workers: 4
 dpi: 300
 bbox: null  # or [xmin, ymin, xmax, ymax]
 padding: 0.15
+cache_dir: null  # or /path/to/custom/cache (null uses package library)
 ```
 
 CLI args override config values.
@@ -235,8 +306,8 @@ The pipeline automatically downloads and caches spatial data based on your sampl
 
 |Data Type|Description|Source|Cache Location|
 |---|---|---|---|
-|**Water Bodies**|Rivers and lakes|OpenStreetMap|`cache_maps/osm_water/`|
-|**Elevation**|Digital elevation models|SRTM (via elevatr)|`cache_maps/`|
+|**Water Bodies**|Rivers and lakes|OpenStreetMap|`[package_lib]/admixspatial/cache_maps/osm_water/`|
+|**Elevation**|Digital elevation models|SRTM (via elevatr)|`[package_lib]/admixspatial/cache_maps/`|
 
 ### Automatic Features:
 - **Adaptive extent**: Map boundaries automatically fit your data coordinates
@@ -279,9 +350,11 @@ The pipeline ensures reproducible results through:
 - **Deterministic downloads**: Spatial data integrity verified through caching
 
 ### Cache Management
-- Spatial data cached in `cache_maps/` directory
+- Spatial data cached in `cache_maps/` directory within the package library (default)
+- Users can specify custom cache directory via `cache_dir` parameter or config
 - Cache automatically managed - no manual cleanup needed
 - Cached files speed up subsequent analyses
+- Cache location is consistent regardless of working directory (when using default)
 
 ## Citation
 If using this software, please cite:
@@ -290,7 +363,7 @@ If using this software, please cite:
   author = {Sebastián Guzmán Rodríguez},
   title = {Admixture Spatial Visualization Pipeline: Species-agnostic visualization of population genetic structure},
   year = {2025},
-  url = {https://github.com/seguzmanro/admixture-spatial-pipeline}
+  url = {https://github.com/seguzmanro/admixture_pipeline_viz}
 }
 ```
 
@@ -304,7 +377,7 @@ MIT License - see LICENSE for details
 **Spatial data download fails:**
 - Check internet connection
 - Verify coordinates are in valid lon/lat format
-- Clear cache: `rm -rf cache_maps/` and retry
+- Clear cache: `rm -rf [package_lib]/admixspatial/cache_maps/` and retry
 
 **Memory issues with large datasets:**
 - Reduce elevation resolution by decreasing `elev_zoom` in `spatial_helpers.R`
