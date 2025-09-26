@@ -32,7 +32,7 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 
 | Population Admixture Structure |
 |:--:|
-| ![Admixture Barplot K=3](examples/Pdepint/plot_results/admixture_barplot_K3.png) |
+| ![Admixture Barplot K=3](inst/extdata/Pdepint/plot_results/admixture_barplot_K3.png) |
 | *Individual ancestry proportions for K=3 in Petunia populations* |
 
 ## Features
