@@ -13,7 +13,7 @@ This pipeline processes ADMIXTURE results and creates spatial visualizations of 
 - Population-level admixture maps overlaid on topography
 - Geographic distribution of genetic clusters
 
-### 🚀 **New in Latest Version (v2.1)**
+### 🚀 **New in Latest Version (v0.1.0)**
 - **Configuration File Support** - Use `--conf_file` with config.yaml to override CLI args (replaces .env)
 - **Custom Bounding Box** - Define user-specific bbox via config or CLI (`--bbox`); auto fallback with configurable padding
 - **Modular Architecture** - Enhanced `admixture_visualization.R` supports single Q file or batch processing
