@@ -9,7 +9,8 @@ quick_visualize(
   fam_file,
   popmap_file,
   coords_file,
-  output_dir = "admixture_results"
+  output_dir = "admixture_results",
+  cache_dir = NULL
 )
 }
 \arguments{
@@ -27,6 +28,10 @@ CSV file with population coordinates (pop, lon, lat).}
 
 \item{output_dir}{Output directory (character, default: "admixture_results").
 Directory where visualization files will be saved.}
+
+\item{cache_dir}{Directory for caching spatial data (character, default: package library).
+Absolute path where downloaded spatial data will be cached. If NULL, uses the package
+library location for consistent caching across working directories.}
 }
 \value{
 NULL (invisibly). All outputs are saved to files in the output directory.

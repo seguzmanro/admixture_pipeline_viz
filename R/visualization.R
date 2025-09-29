@@ -202,32 +202,13 @@ execute_pipeline <- function(args) {
 
       message("Generated barplot for K = ", k_val)
 
-      # Admixture map
-      spatial_components <- generate_spatial_map(
-        Q_matrices[[k_name]],
-        data$popmap,
-        data$popcoords,
-        k_value = k_val
+      full_map <- format_admixture_spatial(
+        base_map, 
+        Q_matrices[[k_name]], 
+        data$popmap, 
+        data$popcoords, 
+        args$labels
       )
-
-      full_map <- base_map +
-        tmap::tm_shape(spatial_components$pop_sf) +
-        tmap::tm_symbols(
-          shape = 'pop',
-          shapes = spatial_components$pie_grobs,
-          size = 0.7,
-          border.lwd = 0.1,
-          col_alpha = 0.5
-        ) +
-        tmap::tm_title(
-          paste("Genetic Structure - K =", k_val),
-          position = c("center", "top")
-        )
-
-      # Add population labels if requested
-      if (!is.null(args$labels) && args$labels) {
-        full_map <- full_map + tmap::tm_text("pop", size = 0.7, ymod = 1.7, col = "black", fontface = "bold")
-      }
 
       tmap::tmap_save(
         full_map,

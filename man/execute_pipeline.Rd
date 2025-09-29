@@ -22,6 +22,7 @@ execute_pipeline(args)
   \item{bbox}{Custom bounding box (list, optional)}
   \item{padding}{Padding for adaptive bbox (numeric)}
   \item{parallel_workers}{Number of parallel workers (integer)}
+  \item{cache_dir}{Directory for caching spatial data (character, optional)}
 }}
 }
 \value{

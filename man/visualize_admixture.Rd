@@ -17,7 +17,8 @@ visualize_admixture(
   labels = FALSE,
   bbox = NULL,
   padding = 0.15,
-  parallel_workers = 4
+  parallel_workers = 4,
+  cache_dir = NULL
 )
 }
 \arguments{
@@ -60,6 +61,10 @@ Fraction of the data range to add as padding around population coordinates.}
 \item{parallel_workers}{Number of parallel workers (integer, default: 4).
 Number of CPU cores to use for parallel processing. Increase for faster processing
 on multi-core systems.}
+
+\item{cache_dir}{Directory for caching spatial data (character, default: package library).
+Absolute path where downloaded spatial data will be cached. If NULL, uses the package
+library location for consistent caching across working directories.}
 }
 \value{
 NULL (invisibly). All outputs are saved to files in the output directory.
