@@ -47,46 +47,73 @@
 #' }
 #' @export
 read_input_data <- function(fam_path, popmap_path, coords_path) {
-  tryCatch({
-    # Read files
-    fam <- read.table(fam_path, stringsAsFactors = FALSE)[, 2]
-    popmap <- read.csv(popmap_path, header = TRUE)[, 1:2]
-    popcoords <- read.csv(coords_path, header = TRUE)[, 1:3]
+  tryCatch(
+    {
+      # Read files
+      fam <- read.table(fam_path, stringsAsFactors = FALSE)[, 2]
+      popmap <- read.csv(popmap_path, header = TRUE)[, 1:2]
 
-    # Standardize column names
-    colnames(popmap) <- c("indv", "pop")
-    colnames(popcoords) <- c("pop", "lon", "lat")
+      # Standarize popcoords based on header names (case-insensitive) rather than position
+      popcoords_raw <- read.csv(coords_path, header = TRUE)
+      col_names <- toupper(names(popcoords_raw))
+      lat_idx <- which(col_names %in% c("lat", "Lat", "LAT", "latitude", "Latitude", "LATITUDE"))
+      lon_idx <- which(col_names %in% c("long", "Long", "LONG", "lon", "Lon", "LON", "longitude", "Longitude", "LONGITUDE"))
+      pop_idx <- which(col_names %in% c("pop", "Pop", "POP", "population", "Population", "POPULATION"))
 
-    # Validate structure
-    if (nrow(popmap) != length(fam)) {
-      stop("FAM file contains ", length(fam), " samples but popmap has ",
-           nrow(popmap), " entries")
+      if (length(lat_idx) == 1 && length(lon_idx) == 1 && length(pop_idx) == 1) {
+        popcoords <- data.frame(
+          pop = popcoords_raw[[pop_idx]],
+          lon = popcoords_raw[[lon_idx]],
+          lat = popcoords_raw[[lat_idx]]
+        )
+      } else {
+        popcoords <- popcoords_raw[, 1:3]
+        colnames(popcoords) <- c("pop", "lon", "lat")
+      }
+
+      # Standardize column names for popmap
+      colnames(popmap) <- c("indv", "pop")
+
+      # Validate structure
+      if (nrow(popmap) != length(fam)) {
+        stop(
+          "FAM file contains ", length(fam), " samples but popmap has ",
+          nrow(popmap), " entries"
+        )
+      }
+
+      if (!all(fam %in% popmap$indv)) {
+        missing <- setdiff(fam, popmap$indv)
+        stop(
+          length(missing), " samples in FAM not found in popmap. First missing: ",
+          missing[1]
+        )
+      }
+
+      # Add coordinate validation
+      if (any(is.na(popcoords$lon))) {
+        stop(
+          "Missing longitude values for populations: ",
+          paste(popcoords$pop[is.na(popcoords$lon)], collapse = ", ")
+        )
+      }
+      if (any(is.na(popcoords$lat))) {
+        stop(
+          "Missing latitude values for populations: ",
+          paste(popcoords$pop[is.na(popcoords$lat)], collapse = ", ")
+        )
+      }
+
+      return(list(
+        fam = fam,
+        popmap = popmap,
+        popcoords = popcoords
+      ))
+    },
+    error = function(e) {
+      stop("Input data error: ", e$message)
     }
-
-    if (!all(fam %in% popmap$indv)) {
-      missing <- setdiff(fam, popmap$indv)
-      stop(length(missing), " samples in FAM not found in popmap. First missing: ",
-           missing[1])
-    }
-
-    # Add coordinate validation
-    if (any(is.na(popcoords$lon))) {
-      stop("Missing longitude values for populations: ",
-           paste(popcoords$pop[is.na(popcoords$lon)], collapse = ", "))
-    }
-    if (any(is.na(popcoords$lat))) {
-      stop("Missing latitude values for populations: ",
-           paste(popcoords$pop[is.na(popcoords$lat)], collapse = ", "))
-    }
-
-    return(list(
-      fam = fam,
-      popmap = popmap,
-      popcoords = popcoords
-    ))
-  }, error = function(e) {
-    stop("Input data error: ", e$message)
-  })
+  )
 }
 
 #' Extract CV error from ADMIXTURE log file

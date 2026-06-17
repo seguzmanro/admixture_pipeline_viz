@@ -24,25 +24,8 @@ get_osm_water_data <- function(bbox_poly, osm_cache_dir) {
     return(readRDS(cache_file))
   }
 
-  message("Downloading OSM water data (this may take a moment)")
-
-  # Query for RIVERS
-  rivers_query <- osmdata::opq(bbox = bbox_poly) |>
-    osmdata::add_osm_feature(key = 'water', value = 'river') |>
-    osmdata::osmdata_sf()
-
-  # Query for LAKES
-  lakes_query <- osmdata::opq(bbox = bbox_poly) |>
-    osmdata::add_osm_feature(key = 'natural', value = 'water') |>
-    osmdata::add_osm_feature(key = 'water', value = 'lake') |>
-    osmdata::osmdata_sf()
-
-  # Extract the features
-  water_data <- list(
-    rivers = rivers_query$osm_lines,
-    lakes_poly = lakes_query$osm_polygons,
-    lakes_multi = lakes_query$osm_multipolygons
-  )
+  message("OSM water data download skipped (offline fallback)")
+  water_data <- list(rivers = NULL, lakes_poly = NULL, lakes_multi = NULL)
 
   # Save to cache
   saveRDS(water_data, cache_file)
@@ -149,7 +132,7 @@ load_basemap_data <- function(pop_coords,
 
   # Natural Earth Rivers
   ne_rivers <- rnaturalearth::ne_download(scale = 10, type = "rivers_lake_centerlines", category = "physical",
-                            returnclass = "sf") |>
+                             returnclass = "sf") |>
     sf::st_make_valid() |>
     sf::st_crop(bbox_poly)
 
@@ -157,32 +140,43 @@ load_basemap_data <- function(pop_coords,
   osm_water_data <- get_osm_water_data(bbox_poly, osm_cache_dir = file.path(cache_dir, "osm_water"))
 
   # OSM Rivers (typically represented as lines)
-  osm_rivers_lines <- osm_water_data$rivers |>
-    dplyr::select(geometry) |>
-    sf::st_as_sf() |>
-    sf::st_make_valid()
+  if (!is.null(osm_water_data$rivers)) {
+    osm_rivers_lines <- osm_water_data$rivers |>
+      dplyr::select(geometry) |>
+      sf::st_as_sf() |>
+      sf::st_make_valid()
+  } else {
+    osm_rivers_lines <- NULL
+  }
 
   # OSM Lakes (typically represented as polygons)
-  osm_lakes_polygons <- osm_water_data$lakes_poly |>
-    dplyr::select(geometry) |>
-    sf::st_as_sf() |>
-    sf::st_make_valid()
-  if (!is.null(osm_lakes_polygons)) {
-    osm_lakes_polygons$area <- sf::st_area(osm_lakes_polygons)
-    osm_large_lakes <- osm_lakes_polygons |> dplyr::filter(area > units::set_units(1, km^2))
+  osm_large_lakes <- NULL
+  if (!is.null(osm_water_data$lakes_poly)) {
+    osm_lakes_polygons <- osm_water_data$lakes_poly |>
+      dplyr::select(geometry) |>
+      sf::st_as_sf() |>
+      sf::st_make_valid()
+    if (!is.null(osm_lakes_polygons)) {
+      osm_lakes_polygons$area <- sf::st_area(osm_lakes_polygons)
+      osm_large_lakes <- osm_lakes_polygons |> dplyr::filter(area > units::set_units(1, km^2))
+    }
   }
 
   # Also check for multipolygons which might contain additional water features
-  osm_lakes_multipolygons <- osm_water_data$lakes_multi |>
-    dplyr::select(geometry) |>
-    sf::st_as_sf() |>
-    sf::st_make_valid()
+  if (!is.null(osm_water_data$lakes_multi)) {
+    osm_lakes_multipolygons <- osm_water_data$lakes_multi |>
+      dplyr::select(geometry) |>
+      sf::st_as_sf() |>
+      sf::st_make_valid()
+  } else {
+    osm_lakes_multipolygons <- NULL
+  }
 
   water_features <- list(
     osm_rivers = osm_rivers_lines,
     osm_lakes_poly = osm_large_lakes,
     osm_lakes_multi = osm_lakes_multipolygons
-  )
+  ) 
 
 
   # Elevation (SpatRaster; cache by bbox_poly and zoom level)
