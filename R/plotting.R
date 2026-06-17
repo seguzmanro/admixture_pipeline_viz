@@ -9,7 +9,7 @@
 #' @param base_family Base font family
 #' @return Custom ggplot2 theme
 #' @export
-theme_genomics <- function(base_size = 11, base_family = "sans") {
+theme_genomics <- function(base_size = 12, base_family = "sans") {
   ggplot2::theme_minimal(base_size = base_size, base_family = base_family) +
     ggplot2::theme(
       # Core elements
@@ -19,27 +19,27 @@ theme_genomics <- function(base_size = 11, base_family = "sans") {
 
       # Text elements
       plot.title = ggplot2::element_text(
-        size = grid::unit(1.2, "lines"),
+        size = base_size * 1.25,
         face = "bold",
         hjust = 0.5,
         margin = ggplot2::margin(b = 10)
       ),
       plot.subtitle = ggplot2::element_text(
-        size = grid::unit(1.0, "lines"),
+        size = base_size * 1.0,
         hjust = 0.5,
         color = "grey30"
       ),
       axis.title = ggplot2::element_text(
-        size = grid::unit(0.9, "lines"),
+        size = base_size * 1.0,
         face = "bold"
       ),
-      axis.text = ggplot2::element_text(size = grid::unit(0.8, "lines")),
-      legend.title = ggplot2::element_text(size = grid::unit(0.85, "lines"), face = "bold"),
-      legend.text = ggplot2::element_text(size = grid::unit(0.8, "lines")),
+      axis.text = ggplot2::element_text(size = base_size * 0.85),
+      legend.title = ggplot2::element_text(size = base_size * 0.9, face = "bold"),
+      legend.text = ggplot2::element_text(size = base_size * 0.85),
 
       # Facet elements
       strip.text = ggplot2::element_text(
-        size = grid::unit(0.9, "lines"),
+        size = base_size * 0.95,
         face = "bold",
         margin = ggplot2::margin(5, 0, 5, 0)
       ),
@@ -47,7 +47,7 @@ theme_genomics <- function(base_size = 11, base_family = "sans") {
 
       # Positioning
       legend.position = "right",
-      legend.key.size = ggplot2::unit(0.6, "lines"),
+      legend.key.size = ggplot2::unit(0.8, "lines"),
       plot.margin = ggplot2::margin(15, 15, 15, 15)
     )
 }
@@ -212,9 +212,9 @@ format_admixture_barplot <- function(q_matrix, popmap, k_value, sort_populations
       y = "Ancestry Proportion",
       fill = "Genetic\nCluster"
     ) +
-    theme_genomics() +
+    theme_genomics(base_size = 12) +
     ggplot2::theme(
-      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, size = grid::unit(0.6, "lines")),
+      axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5, size = 8),
       panel.spacing = ggplot2::unit(0.1, "lines"),
       legend.position = "right"
     ) +
